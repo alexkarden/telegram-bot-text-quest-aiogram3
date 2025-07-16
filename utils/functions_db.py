@@ -22,6 +22,15 @@ async def init_db():
                              "notification_frequency TEXT,"
                              "created_at INTEGER)"
                              "")
+            # Создание таблицы users, если она еще не существует
+            await db.execute(""
+                             "CREATE TABLE IF NOT EXISTS states ("
+                             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                             "user_id INTEGER, "
+                             "created_at INTEGER,"
+                             "gamepath TEXT,"
+                             "state TEXT)"
+                             "")
             await db.commit()
     except aiosqlite.Error as e:
         logging.error(f"Ошибка при инициализации базы данных: {e}")
@@ -53,3 +62,34 @@ async def add_user_db(user_id, first_name, last_name, username):
         logging.error(f"Ошибка при добавлении пользователя в базу данных: {e}")
     except Exception as e:
         logging.error(f"Произошла неожиданная ошибка при добавлении пользователя в базу данных: {e}")
+
+
+#-----------------------------------------------------------------------------------------------------------------------Сохраняем игру
+# Сохраняем игру в базу данных
+async def save_game_to_db(user_id, gamepath, state):
+    try:
+        created_at = int(time.time())
+        async with aiosqlite.connect(DATABASENAME) as db:
+            await db.execute("INSERT INTO states (user_id, created_at, gamepath, state) VALUES (?, ?, ?, ?)", (user_id, created_at, gamepath, state))
+            await db.commit()
+    except aiosqlite.Error as e:
+        logging.error(f"Ошибка при сохранении игры в базу данных: {e}")
+    except Exception as e:
+        logging.error(f"Произошла неожиданная ошибка при сохранении игры в базу данных: {e}")
+
+#-----------------------------------------------------------------------------------------------------------------------Загружаем игру
+# Загружаем игру из базу данных
+async def load_game_from_db(user_id, gamepath):
+    try:
+        async with aiosqlite.connect(DATABASENAME) as db:
+            async with db.execute("SELECT * FROM states WHERE user_id = ? AND gamepath = ? ORDER BY created_at DESC", (user_id,gamepath,)) as cursor:
+                rows = await cursor.fetchall()  # Извлекаем все найденные строки
+                print(rows)
+                return rows  # Возвращаем список строк
+    except aiosqlite.Error as e:
+        logging.error(f"Ошибка при извлечении состояний из базы данных: {e}")
+        return []  # Возвращаем пустой список в случае ошибки
+
+    except Exception as e:
+        logging.error(f"Произошла неожиданная ошибка: {e}")
+        return []  # Возвращаем пустой список в случае ошибки
