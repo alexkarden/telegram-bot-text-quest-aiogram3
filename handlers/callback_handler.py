@@ -12,6 +12,7 @@ from keyboards.keyboards import list_games_keyboard, start_keyboard_inline
 from utils.fuctions_game import send_chapter
 from utils.functions_state import set_state,get_state
 from utils.functions_uni import read_gameini, get_hero_stats
+from utils.functions_db import save_game_to_db, load_game_from_db
 
 
 
@@ -95,12 +96,41 @@ async def callback_query(callback: CallbackQuery):
         gamepath = get_state(callback.from_user.id)['gamepath']
         location = get_state(callback.from_user.id)['chapter']
         caption=f'{gamepath} {location}'
-
         game_continue_keyboard_inline = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Сохранить", callback_data=f"gamestart_{gamepath}"),
-             InlineKeyboardButton(text="Загрузить", callback_data=f"gameload_{gamepath}")],
+            [InlineKeyboardButton(text="Сохранить", callback_data=f"gamesave"),
+             InlineKeyboardButton(text="Загрузить", callback_data=f"gameload")],
+            [InlineKeyboardButton(text="Продолжить", callback_data=location)]
+        ])
+        await callback.message.answer(text=caption, reply_markup=game_continue_keyboard_inline, parse_mode=ParseMode.HTML)
+
+
+    elif data == 'gamesave':
+        state_user = str(get_state(callback.from_user.id))
+        gamepath = str(get_state(callback.from_user.id)['gamepath'])
+        location = get_state(callback.from_user.id)['chapter']
+        await save_game_to_db(callback.from_user.id,gamepath,state_user)
+        game_continue_keyboard_inline = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Сохранить", callback_data=f"gamesave"),
+             InlineKeyboardButton(text="Загрузить", callback_data=f"gameload")],
             [InlineKeyboardButton(text="Продолжить", callback_data=location)]
         ])
 
+        caption=f'Игра сохранена'
+        await callback.message.answer(text=caption, reply_markup=game_continue_keyboard_inline, parse_mode=ParseMode.HTML)
 
+
+    elif data == 'gameload':
+        gamepath = str(get_state(callback.from_user.id)['gamepath'])
+        location = get_state(callback.from_user.id)['chapter']
+        print(callback.from_user.id)
+        print(gamepath)
+        row = await load_game_from_db(callback.from_user.id,gamepath)
+
+        game_continue_keyboard_inline = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Сохранить", callback_data=f"gamesave"),
+             InlineKeyboardButton(text="Загрузить", callback_data=f"gameload")],
+            [InlineKeyboardButton(text="Продолжить", callback_data=location)]
+        ])
+
+        caption=f'{row}'
         await callback.message.answer(text=caption, reply_markup=game_continue_keyboard_inline, parse_mode=ParseMode.HTML)
